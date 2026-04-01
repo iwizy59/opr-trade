@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OPR Journal">
+<title>OPR Journal</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080808; color: #fff; font-family: 'Inter', sans-serif; min-height: 100vh; padding-bottom: 80px; }
+
+.header { background: #0d0d0d; border-bottom: 1px solid #161616; padding: 20px 20px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.header-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 4px; background: linear-gradient(135deg, #00e676, #29b6f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.header-sub { color: #333; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+.btn-new { background: linear-gradient(135deg, #00e676, #29b6f6); border: none; border-radius: 10px; color: #000; font-weight: 800; font-size: 13px; padding: 10px 18px; cursor: pointer; letter-spacing: 1px; white-space: nowrap; }
+
+.content { padding: 20px; max-width: 1200px; margin: 0 auto; }
+
+.progress-label { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.progress-label span:first-child { color: #444; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+.progress-label span:last-child { color: #00e676; font-size: 13px; font-weight: 800; }
+.progress-bar { background: #111; border-radius: 999px; height: 8px; overflow: hidden; margin-bottom: 24px; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #00e676, #29b6f6); border-radius: 999px; transition: width 0.5s ease; }
+
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 24px; }
+@media(min-width: 600px) { .stats { grid-template-columns: repeat(3, 1fr); } }
+.stat-card { background: #0d0d0d; border-radius: 12px; padding: 14px 16px; position: relative; overflow: hidden; }
+.stat-top { position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.stat-label { color: #444; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+.stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 26px; line-height: 1; }
+.stat-sub { color: #333; font-size: 10px; margin-top: 4px; }
+
+.empty { background: #0d0d0d; border: 1px dashed #1a1a1a; border-radius: 16px; padding: 48px 20px; text-align: center; color: #2a2a2a; }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-title { font-size: 15px; font-weight: 600; }
+.empty-sub { font-size: 12px; margin-top: 6px; }
+
+.trade-list { display: flex; flex-direction: column; gap: 10px; }
+.trade-card { background: #0d0d0d; border: 1px solid #161616; border-radius: 12px; padding: 14px 16px; }
+.trade-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.trade-num { color: #333; font-family: monospace; font-size: 12px; }
+.trade-date { color: #444; font-size: 11px; }
+.trade-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.trade-bottom { display: flex; justify-content: space-between; align-items: center; }
+.trade-max { color: #ffd54f; font-size: 12px; font-weight: 700; font-family: monospace; }
+.trade-r { font-size: 16px; font-weight: 800; font-family: monospace; }
+.trade-notes { color: #333; font-size: 11px; margin-top: 8px; font-style: italic; }
+.trade-actions { display: flex; gap: 6px; }
+.btn-edit { background: none; border: 1px solid #222; border-radius: 6px; color: #555; padding: 4px 12px; cursor: pointer; font-size: 11px; }
+.btn-del { background: none; border: 1px solid #2e0a0a; border-radius: 6px; color: #ff5252; padding: 4px 10px; cursor: pointer; font-size: 11px; }
+
+.badge { border-radius: 4px; padding: 2px 8px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; display: inline-block; }
+
+/* Modal */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: flex-end; justify-content: center; z-index: 100; backdrop-filter: blur(4px); }
+@media(min-width: 600px) { .overlay { align-items: center; } }
+.modal { background: #0d0d0d; border: 1px solid #222; border-radius: 20px 20px 0 0; padding: 24px 20px 40px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; }
+@media(min-width: 600px) { .modal { border-radius: 16px; max-width: 520px; padding-bottom: 24px; } }
+.modal-bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #00e676, #29b6f6, #7c83fd); border-radius: 20px 20px 0 0; }
+.modal-handle { width: 36px; height: 4px; background: #222; border-radius: 999px; margin: 8px auto 20px; }
+.modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 3px; color: #fff; margin-bottom: 20px; }
+
+.field { margin-bottom: 18px; }
+.field-label { color: #444; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; display: block; }
+.btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt-btn { border-radius: 6px; padding: 7px 14px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.15s; border: 1px solid #222; background: #111; color: #444; }
+.opt-btn.active { }
+
+input[type=date], input[type=number], textarea {
+background: #111; border: 1px solid #222; border-radius: 8px;
+color: #fff; padding: 10px 14px; font-size: 14px; width: 100%;
+font-family: 'Inter', sans-serif; outline: none;
+}
+textarea { resize: vertical; }
+
+.modal-actions { display: flex; gap: 10px; margin-top: 8px; }
+.btn-save { flex: 1; background: linear-gradient(135deg, #00e676, #29b6f6); border: none; border-radius: 10px; color: #000; font-weight: 800; font-size: 14px; padding: 14px; cursor: pointer; letter-spacing: 1px; }
+.btn-cancel { background: #111; border: 1px solid #222; border-radius: 10px; color: #555; font-weight: 600; font-size: 14px; padding: 14px 20px; cursor: pointer; }
+
+.toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #00e676; color: #000; font-weight: 800; font-size: 13px; padding: 10px 24px; border-radius: 999px; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.btn-export { background: #111; border: 1px solid #29b6f6; border-radius: 10px; color: #29b6f6; font-weight: 700; font-size: 12px; padding: 9px 12px; cursor: pointer; white-space: nowrap; }
+.btn-import-label { display: inline-block; background: #111; border: 1px solid #7c83fd; border-radius: 10px; color: #7c83fd; font-weight: 700; font-size: 12px; padding: 9px 12px; cursor: pointer; white-space: nowrap; }
+</style>
+
+</head>
+<body>
+
+<!-- Ecran de connexion -->
+<div id="login-screen" style="display:none; position:fixed; inset:0; background:#080808; z-index:1000; flex-direction:column; align-items:center; justify-content:center; padding:24px;">
+  <div style="font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:4px; background:linear-gradient(135deg,#00e676,#29b6f6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:4px;">OPR JOURNAL</div>
+  <div style="color:#333; font-size:10px; letter-spacing:2px; text-transform:uppercase; margin-bottom:32px;">S&P500 · Paper Trading · 50 Trades</div>
+  <div style="width:100%; max-width:360px;">
+
+    <!-- Email + mot de passe -->
+    <div id="login-form">
+      <div style="color:#444; font-size:9px; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;">Email</div>
+      <input type="email" id="login-email" placeholder="ton@email.com" autocomplete="email" style="background:#111; border:1px solid #222; border-radius:8px; color:#fff; padding:12px 14px; font-size:14px; width:100%; font-family:'Inter',sans-serif; outline:none; margin-bottom:10px;">
+      <div style="color:#444; font-size:9px; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;">Mot de passe</div>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" style="background:#111; border:1px solid #222; border-radius:8px; color:#fff; padding:12px 14px; font-size:14px; width:100%; font-family:'Inter',sans-serif; outline:none; margin-bottom:12px;">
+      <button onclick="signInWithPassword()" style="width:100%; background:linear-gradient(135deg,#00e676,#29b6f6); border:none; border-radius:10px; color:#000; font-weight:800; font-size:14px; padding:14px; cursor:pointer; letter-spacing:1px; margin-bottom:12px;">SE CONNECTER</button>
+      <div style="text-align:center;">
+        <span onclick="showMagicLinkForm()" style="color:#333; font-size:12px; cursor:pointer; text-decoration:underline;">Mot de passe oublié ?</span>
+      </div>
+    </div>
+
+    <!-- Magic Link (fallback mot de passe oublié) -->
+    <div id="magic-link-form" style="display:none;">
+      <div style="color:#444; font-size:9px; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;">Email</div>
+      <input type="email" id="login-email-magic" placeholder="ton@email.com" autocomplete="email" style="background:#111; border:1px solid #222; border-radius:8px; color:#fff; padding:12px 14px; font-size:14px; width:100%; font-family:'Inter',sans-serif; outline:none; margin-bottom:12px;">
+      <button onclick="sendMagicLink()" style="width:100%; background:#111; border:1px solid #29b6f6; border-radius:10px; color:#29b6f6; font-weight:800; font-size:14px; padding:14px; cursor:pointer; letter-spacing:1px; margin-bottom:12px;">ENVOYER UN LIEN</button>
+      <div style="text-align:center;">
+        <span onclick="showPasswordForm()" style="color:#333; font-size:12px; cursor:pointer; text-decoration:underline;">Retour</span>
+      </div>
+    </div>
+
+    <div id="login-msg" style="color:#444; font-size:12px; text-align:center; margin-top:12px;"></div>
+  </div>
+</div>
+
+<div class="header">
+  <div>
+    <div class="header-title">OPR JOURNAL</div>
+    <div class="header-sub">S&P500 · Paper Trading · 50 Trades</div>
+  </div>
+  <div class="header-actions">
+    <button class="btn-export" onclick="exportData()">⬇ Export</button>
+    <label class="btn-import-label">⬆ Import<input type="file" accept=".json" style="display:none" onchange="importData(event)"></label>
+    <button class="btn-new" onclick="openModal()">+ Trade</button>
+  </div>
+</div>
+
+<div class="content">
+  <div class="progress-label">
+    <span>Progression</span>
+    <span id="prog-text">0 / 50 trades</span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+
+  <div class="stats">
+    <div class="stat-card"><div class="stat-top" style="background:linear-gradient(90deg,#29b6f6,transparent)"></div><div class="stat-label">Trades</div><div class="stat-value" id="s-n" style="color:#29b6f6">0</div><div class="stat-sub" id="s-rest">50 restants</div></div>
+    <div class="stat-card"><div class="stat-top" style="background:linear-gradient(90deg,#ff5252,transparent)"></div><div class="stat-label">Winrate</div><div class="stat-value" id="s-wr" style="color:#ff5252">0%</div><div class="stat-sub">Objectif : 34%+</div></div>
+    <div class="stat-card"><div class="stat-top" style="background:linear-gradient(90deg,#00e676,transparent)"></div><div class="stat-label">Total R</div><div class="stat-value" id="s-r" style="color:#00e676">0R</div></div>
+    <div class="stat-card"><div class="stat-top" style="background:linear-gradient(90deg,#7c83fd,transparent)"></div><div class="stat-label">TP / SL / Inv.</div><div class="stat-value" id="s-tsl" style="color:#7c83fd">0/0/0</div></div>
+    <div class="stat-card"><div class="stat-top" style="background:linear-gradient(90deg,#ffd54f,transparent)"></div><div class="stat-label">Max moy. avant retour</div><div class="stat-value" id="s-max" style="color:#ffd54f">—</div><div class="stat-sub">Objectif &gt; 2R</div></div>
+    <div class="stat-card"><div class="stat-top" style="background:linear-gradient(90deg,#29b6f6,transparent)"></div><div class="stat-label">H4/H1 alignés</div><div class="stat-value" id="s-align" style="color:#29b6f6">—</div></div>
+  </div>
+
+  <div id="chart-section" style="display:none; margin-bottom: 24px;">
+    <div style="background:#0d0d0d; border-radius:14px; padding:18px 16px; position:relative; overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#00e676,#29b6f6)"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div>
+          <div style="color:#444;font-size:9px;letter-spacing:2px;text-transform:uppercase;">Courbe de capital</div>
+          <div style="color:#fff;font-size:13px;font-weight:700;margin-top:2px;">Évolution du R cumulé</div>
+        </div>
+        <div id="chart-current-r" style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#00e676;">+0R</div>
+      </div>
+      <canvas id="equity-chart" style="width:100%;height:180px;display:block;"></canvas>
+    </div>
+  </div>
+
+  <div id="trade-container"></div>
+</div>
+
+<!-- Modal -->
+
+<div class="overlay" id="overlay" style="display:none" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal">
+    <div class="modal-bar"></div>
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">NOUVEAU TRADE</div>
+
+<input type="hidden" id="f-id">
+
+<div class="field">
+  <label class="field-label">Date</label>
+  <input type="date" id="f-date">
+</div>
+
+<div class="field">
+  <label class="field-label">Alignement H4</label>
+  <div class="btn-group" id="g-h4">
+    <button class="opt-btn" data-group="h4" data-val="Haussier" style="--ac:#00e676;--bg:#0a2e1a" onclick="selectOpt(this)">▲ Haussier</button>
+    <button class="opt-btn" data-group="h4" data-val="Baissier" style="--ac:#ff5252;--bg:#2e0a0a" onclick="selectOpt(this)">▼ Baissier</button>
+  </div>
+</div>
+
+<div class="field">
+  <label class="field-label">Alignement H1</label>
+  <div class="btn-group" id="g-h1">
+    <button class="opt-btn" data-group="h1" data-val="Haussier" style="--ac:#00e676;--bg:#0a2e1a" onclick="selectOpt(this)">▲ Haussier</button>
+    <button class="opt-btn" data-group="h1" data-val="Baissier" style="--ac:#ff5252;--bg:#2e0a0a" onclick="selectOpt(this)">▼ Baissier</button>
+  </div>
+</div>
+
+<div class="field">
+  <label class="field-label">Type de jour</label>
+  <div class="btn-group">
+    <button class="opt-btn" data-group="jour" data-val="Tendance" style="--ac:#29b6f6;--bg:#0d1f2d" onclick="selectOpt(this)">Tendance</button>
+    <button class="opt-btn" data-group="jour" data-val="Range" style="--ac:#ffd54f;--bg:#1a1500" onclick="selectOpt(this)">Range</button>
+    <button class="opt-btn" data-group="jour" data-val="Macro" style="--ac:#ce93d8;--bg:#1a0d2e" onclick="selectOpt(this)">Macro</button>
+  </div>
+</div>
+
+<div class="field">
+  <label class="field-label">Qualité pullback M5</label>
+  <div class="btn-group">
+    <button class="opt-btn" data-group="pb" data-val="Propre" style="--ac:#00e676;--bg:#0a2e1a" onclick="selectOpt(this)">Propre</button>
+    <button class="opt-btn" data-group="pb" data-val="Forcé" style="--ac:#ff9800;--bg:#2e1a0a" onclick="selectOpt(this)">Forcé</button>
+  </div>
+</div>
+
+<div class="field">
+  <label class="field-label">Prix rentré dans l'OPR ?</label>
+  <div class="btn-group">
+    <button class="opt-btn" data-group="opr" data-val="Non" style="--ac:#00e676;--bg:#0a2e1a" onclick="selectOpt(this)">Non ✓</button>
+    <button class="opt-btn" data-group="opr" data-val="Oui" style="--ac:#ff5252;--bg:#2e0a0a" onclick="selectOpt(this)">Oui ⚠</button>
+  </div>
+</div>
+
+<div class="field">
+  <label class="field-label">Max atteint avant retournement (R)</label>
+  <input type="number" step="0.1" id="f-max" placeholder="ex: 1.4">
+</div>
+
+<div class="field">
+  <label class="field-label">Résultat final</label>
+  <div class="btn-group">
+    <button class="opt-btn" data-group="res" data-val="TP" style="--ac:#00e676;--bg:#0a2e1a" onclick="selectOpt(this)">TP ✓</button>
+    <button class="opt-btn" data-group="res" data-val="SL" style="--ac:#ff5252;--bg:#2e0a0a" onclick="selectOpt(this)">SL ✗</button>
+    <button class="opt-btn" data-group="res" data-val="Invalidation" style="--ac:#7c83fd;--bg:#1a1a2e" onclick="selectOpt(this)">Invalidation</button>
+  </div>
+</div>
+
+<div class="field">
+  <label class="field-label">R gagné / perdu (ex: 2 ou -1)</label>
+  <input type="number" step="0.1" id="f-r" placeholder="ex: 2 ou -1">
+</div>
+
+<div class="field">
+  <label class="field-label">Notes</label>
+  <textarea id="f-notes" rows="3" placeholder="Observations, contexte..."></textarea>
+</div>
+
+<div class="modal-actions">
+  <button class="btn-save" onclick="saveTrade()">ENREGISTRER</button>
+  <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+</div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ Trade enregistré</div>
+
+<script>
+const SUPABASE_URL = 'https://wbzerrogayljehpwaonv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_yhqPbga36dWwwlzIHr1e5A_8VJsyiSY';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let trades = [];
+let editId = null;
+const selections = {};
+
+// Auth
+async function checkAuth() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    hideLoginScreen();
+    await load();
+  } else {
+    showLoginScreen();
+  }
+}
+
+function showLoginScreen() {
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+function hideLoginScreen() {
+  document.getElementById('login-screen').style.display = 'none';
+}
+
+async function signInWithPassword() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) { setLoginMsg('⚠ Remplis tous les champs'); return; }
+  setLoginMsg('Connexion...');
+  const { error } = await db.auth.signInWithPassword({ email, password });
+  if (error) setLoginMsg('⚠ Email ou mot de passe incorrect');
+}
+
+async function sendMagicLink() {
+  const email = document.getElementById('login-email-magic').value.trim();
+  if (!email) return;
+  setLoginMsg('Envoi en cours...');
+  const { error } = await db.auth.signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo: window.location.origin + window.location.pathname } });
+  if (error) {
+    setLoginMsg('⚠ Erreur : ' + error.message);
+  } else {
+    setLoginMsg('✓ Lien envoyé ! Vérifie ta boîte mail.');
+  }
+}
+
+function setLoginMsg(msg) {
+  document.getElementById('login-msg').textContent = msg;
+}
+
+function showMagicLinkForm() {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('magic-link-form').style.display = 'block';
+  setLoginMsg('');
+}
+
+function showPasswordForm() {
+  document.getElementById('magic-link-form').style.display = 'none';
+  document.getElementById('login-form').style.display = 'block';
+  setLoginMsg('');
+}
+
+db.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    hideLoginScreen();
+    load();
+  }
+});
+
+// Data
+async function load() {
+  const { data, error } = await db.from('trades').select('*').order('trade_id', { ascending: true });
+  if (error) { showToast('⚠ Erreur de chargement'); return; }
+  trades = (data || []).map(t => ({
+    id: t.trade_id,
+    date: t.date || '',
+    alignH4: t.align_h4 || '',
+    alignH1: t.align_h1 || '',
+    typeJour: t.type_jour || '',
+    pullbackM5: t.pullback_m5 || '',
+    pullbackDansOPR: t.pullback_dans_opr || '',
+    maxAtteint: t.max_atteint != null ? String(t.max_atteint) : '',
+    resultat: t.resultat || '',
+    rGagne: t.r_gagne != null ? String(t.r_gagne) : '',
+    notes: t.notes || '',
+  }));
+  render();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function selectOpt(btn) {
+  const group = btn.dataset.group;
+  selections[group] = btn.dataset.val;
+  document.querySelectorAll(`.opt-btn[data-group="${group}"]`).forEach(b => {
+    const ac = b.style.getPropertyValue('--ac');
+    const bg = b.style.getPropertyValue('--bg');
+    if (b === btn) {
+      b.style.background = bg;
+      b.style.color = ac;
+      b.style.borderColor = ac;
+    } else {
+      b.style.background = '#111';
+      b.style.color = '#444';
+      b.style.borderColor = '#222';
+    }
+  });
+}
+
+function clearSelections() {
+  ['h4','h1','jour','pb','opr','res'].forEach(g => {
+    delete selections[g];
+    document.querySelectorAll(`.opt-btn[data-group="${g}"]`).forEach(b => {
+      b.style.background = '#111';
+      b.style.color = '#444';
+      b.style.borderColor = '#222';
+    });
+  });
+}
+
+function openModal(id = null) {
+  editId = id;
+  clearSelections();
+  document.getElementById('f-date').value = '';
+  document.getElementById('f-max').value = '';
+  document.getElementById('f-r').value = '';
+  document.getElementById('f-notes').value = '';
+  document.getElementById('f-id').value = '';
+
+  if (id !== null) {
+    const t = trades.find(x => x.id === id);
+    if (t) {
+      document.getElementById('modal-title').textContent = `TRADE #${String(id).padStart(2,'0')}`;
+      document.getElementById('f-date').value = t.date || '';
+      document.getElementById('f-max').value = t.maxAtteint || '';
+      document.getElementById('f-r').value = t.rGagne || '';
+      document.getElementById('f-notes').value = t.notes || '';
+      if (t.alignH4) selectOpt(document.querySelector(`.opt-btn[data-group="h4"][data-val="${t.alignH4}"]`));
+      if (t.alignH1) selectOpt(document.querySelector(`.opt-btn[data-group="h1"][data-val="${t.alignH1}"]`));
+      if (t.typeJour) selectOpt(document.querySelector(`.opt-btn[data-group="jour"][data-val="${t.typeJour}"]`));
+      if (t.pullbackM5) selectOpt(document.querySelector(`.opt-btn[data-group="pb"][data-val="${t.pullbackM5}"]`));
+      if (t.pullbackDansOPR) selectOpt(document.querySelector(`.opt-btn[data-group="opr"][data-val="${t.pullbackDansOPR}"]`));
+      if (t.resultat) selectOpt(document.querySelector(`.opt-btn[data-group="res"][data-val="${t.resultat}"]`));
+    }
+  } else {
+    document.getElementById('modal-title').textContent = 'NOUVEAU TRADE';
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('f-date').value = today;
+  }
+
+  document.getElementById('overlay').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('overlay').style.display = 'none';
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('overlay')) closeModal();
+}
+
+async function saveTrade() {
+  const { data: { user } } = await db.auth.getUser();
+
+  const tradeData = {
+    date: document.getElementById('f-date').value || null,
+    align_h4: selections['h4'] || null,
+    align_h1: selections['h1'] || null,
+    type_jour: selections['jour'] || null,
+    pullback_m5: selections['pb'] || null,
+    pullback_dans_opr: selections['opr'] || null,
+    max_atteint: document.getElementById('f-max').value || null,
+    resultat: selections['res'] || null,
+    r_gagne: document.getElementById('f-r').value || null,
+    notes: document.getElementById('f-notes').value || null,
+  };
+
+  let error;
+  if (editId !== null) {
+    ({ error } = await db.from('trades').update(tradeData).eq('trade_id', editId).eq('user_id', user.id));
+    if (!error) showToast('✓ Trade modifié');
+  } else {
+    const newId = trades.length ? Math.max(...trades.map(t => t.id)) + 1 : 1;
+    ({ error } = await db.from('trades').insert({ ...tradeData, trade_id: newId, user_id: user.id }));
+    if (!error) showToast('✓ Trade enregistré');
+  }
+
+  if (error) { showToast('⚠ Erreur de sauvegarde'); return; }
+  closeModal();
+  await load();
+}
+
+async function deleteTrade(id) {
+  if (!confirm('Supprimer ce trade ?')) return;
+  const { data: { user } } = await db.auth.getUser();
+  const { error } = await db.from('trades').delete().eq('trade_id', id).eq('user_id', user.id);
+  if (error) { showToast('⚠ Erreur'); return; }
+  showToast('Trade supprimé');
+  await load();
+}
+
+const BADGE = {
+  Haussier: ['#0a2e1a','#00e676','▲ Haussier'],
+  Baissier: ['#2e0a0a','#ff5252','▼ Baissier'],
+  Tendance: ['#0d1f2d','#29b6f6','Tendance'],
+  Range: ['#1a1500','#ffd54f','Range'],
+  Macro: ['#1a0d2e','#ce93d8','Macro'],
+  Propre: ['#0a2e1a','#00e676','Propre'],
+  Forcé: ['#2e1a0a','#ff9800','Forcé'],
+  Oui: ['#2e0a0a','#ff5252','Dans OPR ⚠'],
+  Non: ['#0a2e1a','#00e676','OPR OK ✓'],
+  TP: ['#0a2e1a','#00e676','TP ✓'],
+  SL: ['#2e0a0a','#ff5252','SL ✗'],
+  Invalidation: ['#1a1a2e','#7c83fd','Inval.'],
+};
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function badge(val) {
+  if (!val) return '';
+  const cfg = BADGE[val] || ['#222','#666',escapeHtml(val)];
+  return `<span class="badge" style="background:${cfg[0]};color:${cfg[1]}">${cfg[2]}</span>`;
+}
+
+function renderChart() {
+  const sorted = [...trades].sort((a,b) => a.id - b.id);
+  const section = document.getElementById('chart-section');
+
+  if (sorted.length < 2) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  let cum = 0;
+  const points = [{ x: 0, y: 0 }];
+  sorted.forEach((t, i) => {
+    cum += parseFloat(t.rGagne) || 0;
+    points.push({ x: i + 1, y: parseFloat(cum.toFixed(2)) });
+  });
+
+  const currentR = points[points.length - 1].y;
+  const el = document.getElementById('chart-current-r');
+  el.textContent = (currentR >= 0 ? '+' : '') + currentR + 'R';
+  el.style.color = currentR >= 0 ? '#00e676' : '#ff5252';
+
+  const canvas = document.getElementById('equity-chart');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const W = rect.width || canvas.offsetWidth || 300;
+  const H = 180;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad = { top: 16, right: 16, bottom: 28, left: 40 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  const ys = points.map(p => p.y);
+  const minY = Math.min(...ys, 0);
+  const maxY = Math.max(...ys, 0);
+  const rangeY = maxY - minY || 1;
+  const maxX = points.length - 1;
+
+  const toX = x => pad.left + (x / maxX) * cw;
+  const toY = y => pad.top + ch - ((y - minY) / rangeY) * ch;
+
+  const zeroY = toY(0);
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(pad.left, zeroY);
+  ctx.lineTo(pad.left + cw, zeroY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.strokeStyle = '#161616';
+  ctx.lineWidth = 1;
+  [0.25, 0.5, 0.75].forEach(f => {
+    const gy = pad.top + ch * f;
+    ctx.beginPath(); ctx.moveTo(pad.left, gy); ctx.lineTo(pad.left + cw, gy); ctx.stroke();
+  });
+
+  const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ch);
+  if (currentR >= 0) {
+    grad.addColorStop(0, 'rgba(0,230,118,0.25)');
+    grad.addColorStop(1, 'rgba(0,230,118,0)');
+  } else {
+    grad.addColorStop(0, 'rgba(255,82,82,0)');
+    grad.addColorStop(1, 'rgba(255,82,82,0.25)');
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(toX(points[0].x), zeroY);
+  points.forEach(p => ctx.lineTo(toX(p.x), toY(p.y)));
+  ctx.lineTo(toX(points[points.length-1].x), zeroY);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = currentR >= 0 ? '#00e676' : '#ff5252';
+  ctx.lineJoin = 'round';
+  points.forEach((p, i) => i === 0 ? ctx.moveTo(toX(p.x), toY(p.y)) : ctx.lineTo(toX(p.x), toY(p.y)));
+  ctx.stroke();
+
+  points.forEach((p, i) => {
+    if (i === 0) return;
+    const t = sorted[i-1];
+    const dotColor = t.resultat === 'TP' ? '#00e676' : t.resultat === 'SL' ? '#ff5252' : '#7c83fd';
+    ctx.beginPath();
+    ctx.arc(toX(p.x), toY(p.y), 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = dotColor;
+    ctx.fill();
+  });
+
+  const last = points[points.length - 1];
+  ctx.beginPath();
+  ctx.arc(toX(last.x), toY(last.y), 5, 0, Math.PI * 2);
+  ctx.fillStyle = currentR >= 0 ? '#00e676' : '#ff5252';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(toX(last.x), toY(last.y), 8, 0, Math.PI * 2);
+  ctx.strokeStyle = currentR >= 0 ? 'rgba(0,230,118,0.3)' : 'rgba(255,82,82,0.3)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = '#444';
+  ctx.font = '10px Inter, sans-serif';
+  ctx.textAlign = 'right';
+  [minY, 0, maxY].forEach(v => {
+    const y = toY(v);
+    if (y > pad.top + 8 && y < pad.top + ch - 4) {
+      ctx.fillText((v >= 0 ? '+' : '') + v.toFixed(1) + 'R', pad.left - 4, y + 4);
+    }
+  });
+
+  ctx.textAlign = 'center';
+  const labelPts = [1, Math.round(maxX/2), maxX].filter((v,i,a) => a.indexOf(v) === i && v > 0);
+  labelPts.forEach(x => {
+    ctx.fillText('#' + x, toX(x), H - 6);
+  });
+}
+
+function render() {
+  const n = trades.length;
+  const tps = trades.filter(t => t.resultat === 'TP').length;
+  const sls = trades.filter(t => t.resultat === 'SL').length;
+  const invs = trades.filter(t => t.resultat === 'Invalidation').length;
+  const wr = n ? Math.round(tps/n*100) : 0;
+  const totalR = trades.reduce((a,t) => a + (parseFloat(t.rGagne)||0), 0);
+  const maxTrades = trades.filter(t => t.maxAtteint !== '');
+  const avgMax = maxTrades.length ? (maxTrades.reduce((a,t) => a+(parseFloat(t.maxAtteint)||0),0)/maxTrades.length).toFixed(2) : null;
+  const aligned = trades.filter(t => t.alignH4 && t.alignH1 && t.alignH4 === t.alignH1).length;
+  const pct = Math.min(n/50*100,100);
+
+  document.getElementById('prog-text').textContent = `${n} / 50 trades`;
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('s-n').textContent = n;
+  document.getElementById('s-rest').textContent = `${Math.max(50-n,0)} restants`;
+
+  const wrEl = document.getElementById('s-wr');
+  wrEl.textContent = wr + '%';
+  wrEl.style.color = wr >= 34 ? '#00e676' : '#ff5252';
+
+  const rEl = document.getElementById('s-r');
+  rEl.textContent = (totalR >= 0 ? '+' : '') + totalR.toFixed(1) + 'R';
+  rEl.style.color = totalR >= 0 ? '#00e676' : '#ff5252';
+
+  document.getElementById('s-tsl').textContent = `${tps}/${sls}/${invs}`;
+  document.getElementById('s-max').textContent = avgMax ? avgMax + 'R' : '—';
+  document.getElementById('s-align').textContent = n ? `${Math.round(aligned/n*100)}%` : '—';
+
+  renderChart();
+
+  const container = document.getElementById('trade-container');
+  if (trades.length === 0) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Aucun trade enregistré</div><div class="empty-sub">Appuyez sur "+ Trade" pour commencer</div></div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="trade-list">${[...trades].reverse().map(t => {
+    const r = parseFloat(t.rGagne);
+    const rColor = r > 0 ? '#00e676' : r < 0 ? '#ff5252' : '#555';
+    const rText = t.rGagne !== '' ? `${r > 0 ? '+' : ''}${t.rGagne}R` : '—';
+    return `
+    <div class="trade-card">
+      <div class="trade-card-top">
+        <span class="trade-num">#${String(t.id).padStart(2,'0')} ${t.date ? '· ' + escapeHtml(t.date) : ''}</span>
+        <div class="trade-actions">
+          <button class="btn-edit" onclick="openModal(${t.id})">Éditer</button>
+          <button class="btn-del" onclick="deleteTrade(${t.id})">✕</button>
+        </div>
+      </div>
+      <div class="trade-badges">
+        ${badge(t.alignH4)}${badge(t.alignH1)}${badge(t.typeJour)}${badge(t.pullbackM5)}${badge(t.pullbackDansOPR)}${badge(t.resultat)}
+      </div>
+      <div class="trade-bottom">
+        <span class="trade-max">${t.maxAtteint ? 'Max: ' + t.maxAtteint + 'R' : ''}</span>
+        <span class="trade-r" style="color:${rColor}">${rText}</span>
+      </div>
+      ${t.notes ? `<div class="trade-notes">${escapeHtml(t.notes)}</div>` : ''}
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function exportData() {
+  if (trades.length === 0) { showToast('⚠ Aucun trade à exporter'); return; }
+  const json = JSON.stringify({ version: 1, exportDate: new Date().toISOString(), trades }, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `opr-backup-${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Sauvegarde exportée');
+}
+
+async function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const imported = data.trades || data;
+      if (!Array.isArray(imported)) throw new Error('Format invalide');
+      if (!confirm(`Importer ${imported.length} trades ? Les données actuelles seront remplacées.`)) return;
+
+      const { data: { user } } = await db.auth.getUser();
+      await db.from('trades').delete().eq('user_id', user.id);
+
+      const rows = imported.map(t => ({
+        user_id: user.id,
+        trade_id: t.id,
+        date: t.date || null,
+        align_h4: t.alignH4 || null,
+        align_h1: t.alignH1 || null,
+        type_jour: t.typeJour || null,
+        pullback_m5: t.pullbackM5 || null,
+        pullback_dans_opr: t.pullbackDansOPR || null,
+        max_atteint: t.maxAtteint || null,
+        resultat: t.resultat || null,
+        r_gagne: t.rGagne || null,
+        notes: t.notes || null,
+      }));
+
+      const { error } = await db.from('trades').insert(rows);
+      if (error) throw error;
+
+      await load();
+      showToast(`✓ ${imported.length} trades restaurés`);
+    } catch(err) {
+      showToast('⚠ Fichier invalide');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+checkAuth();
+</script>
+
+</body>
+</html>
