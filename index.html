@@ -417,7 +417,8 @@ async function load() {
 
 async function ensureActiveStrategy() {
   const { data: { user } } = await db.auth.getUser();
-  const { data: active } = await db.from('strategies').select('*').eq('user_id', user.id).is('archived_at', null).maybeSingle();
+  const { data: rows } = await db.from('strategies').select('*').eq('user_id', user.id).is('archived_at', null).order('created_at', { ascending: true }).limit(1);
+  const active = rows && rows.length > 0 ? rows[0] : null;
   if (active) { currentStrategy = active; updateStrategyName(); return; }
 
   const { count } = await db.from('strategies').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
