@@ -82,6 +82,11 @@ export function archiveStrategy(strategyId) {
     .update({ archived_at: new Date().toISOString() }).eq('id', strategyId);
 }
 
+export function unarchiveStrategy(strategyId) {
+  return db.from('strategies')
+    .update({ archived_at: null }).eq('id', strategyId);
+}
+
 export function countStrategies(userId) {
   return db.from('strategies').select('*', { count: 'exact', head: true }).eq('user_id', userId);
 }

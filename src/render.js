@@ -108,7 +108,10 @@ export function renderHistory(historyStrategies, historyFilterWinrate) {
     return `<div class="history-card" onclick="viewHistoryStrategy('${s.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
         <div class="history-card-name">${escapeHtml(s.name)}</div>
-        <button onclick="event.stopPropagation();deleteArchivedStrategy('${s.id}')" style="background:none;border:1px solid #2e0a0a;border-radius:6px;color:#ff5252;font-size:11px;padding:3px 8px;cursor:pointer;flex-shrink:0;margin-left:8px;">✕</button>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;">
+          <button onclick="event.stopPropagation();restoreStrategy('${s.id}')" style="background:none;border:1px solid #1a2e1a;border-radius:6px;color:#00e676;font-size:11px;padding:3px 8px;cursor:pointer;">↩ Restaurer</button>
+          <button onclick="event.stopPropagation();deleteArchivedStrategy('${s.id}')" style="background:none;border:1px solid #2e0a0a;border-radius:6px;color:#ff5252;font-size:11px;padding:3px 8px;cursor:pointer;">✕</button>
+        </div>
       </div>
       <div class="history-card-meta">Archivée le ${date} · ${n} trade${n > 1 ? 's' : ''}</div>
       <div class="history-stats">

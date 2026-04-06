@@ -9,7 +9,7 @@ import {
 import {
   load, saveTrade, deleteTrade, exportData, importData,
   switchTab, viewHistoryStrategy, backToHistory, toggleHistoryFilter,
-  deleteArchivedStrategy, openNewStrategyModal, confirmNewStrategy,
+  deleteArchivedStrategy, restoreStrategy, openNewStrategyModal, confirmNewStrategy,
 } from './app.js';
 import { openModal, closeModal, handleOverlayClick, selectOpt, closeStrategyModal } from './modal.js';
 
@@ -18,7 +18,7 @@ Object.assign(window, {
   openModal, closeModal, handleOverlayClick, selectOpt,
   saveTrade, deleteTrade, exportData, importData,
   switchTab, viewHistoryStrategy, backToHistory, toggleHistoryFilter,
-  deleteArchivedStrategy, openNewStrategyModal, confirmNewStrategy, closeStrategyModal,
+  deleteArchivedStrategy, restoreStrategy, openNewStrategyModal, confirmNewStrategy, closeStrategyModal,
   showMagicLinkForm, showPasswordForm,
 });
 

@@ -141,6 +141,19 @@ export async function loadHistory() {
   renderHistory(state.historyStrategies, state.historyFilterWinrate);
 }
 
+export async function restoreStrategy(strategyId) {
+  if (!confirm('Restaurer cette stratégie comme stratégie active ? La stratégie actuelle sera archivée.')) return;
+  if (state.currentStrategy) {
+    const { error } = await api.archiveStrategy(state.currentStrategy.id);
+    if (error) { showToast('⚠ Erreur lors de l\'archivage'); return; }
+  }
+  const { error } = await api.unarchiveStrategy(strategyId);
+  if (error) { showToast('⚠ Erreur lors de la restauration'); return; }
+  showToast('✓ Stratégie restaurée');
+  await load();
+  switchTab('active');
+}
+
 export function toggleHistoryFilter() {
   state.historyFilterWinrate = !state.historyFilterWinrate;
   renderHistory(state.historyStrategies, state.historyFilterWinrate);
