@@ -323,6 +323,7 @@ let viewTab = 'active';
 let displayTrades = [];
 let displayReadOnly = false;
 let historyStrategies = [];
+let historyFilterWinrate = false;
 
 function mapTrade(t) {
   return {
@@ -872,18 +873,32 @@ async function loadHistory() {
   renderHistory();
 }
 
+function toggleHistoryFilter() {
+  historyFilterWinrate = !historyFilterWinrate;
+  renderHistory();
+}
+
 function renderHistory() {
   const view = document.getElementById('history-view');
   if (historyStrategies.length === 0) {
     view.innerHTML = `<div class="empty"><div class="empty-icon">📂</div><div class="empty-title">Aucune stratégie archivée</div><div class="empty-sub">Démarre une nouvelle stratégie pour archiver l'actuelle</div></div>`;
     return;
   }
-  view.innerHTML = `<div class="history-list">${historyStrategies.map(({ strategy: s, n, totalR, wr }) => {
+  const filtered = historyFilterWinrate ? historyStrategies.filter(h => h.wr >= 34) : historyStrategies;
+  const filterBtn = `<button onclick="toggleHistoryFilter()" style="background:none;border:1px solid ${historyFilterWinrate ? '#00e676' : '#222'};border-radius:6px;color:${historyFilterWinrate ? '#00e676' : '#444'};font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px;">Winrate ≥ 34%</button>`;
+  if (filtered.length === 0) {
+    view.innerHTML = filterBtn + `<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Aucune stratégie</div><div class="empty-sub">Aucune stratégie archivée n'atteint cet objectif</div></div>`;
+    return;
+  }
+  view.innerHTML = filterBtn + `<div class="history-list">${filtered.map(({ strategy: s, n, totalR, wr }) => {
     const rColor = totalR >= 0 ? '#00e676' : '#ff5252';
     const rText = (totalR >= 0 ? '+' : '') + totalR.toFixed(1) + 'R';
     const date = s.archived_at ? new Date(s.archived_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
     return `<div class="history-card" onclick="viewHistoryStrategy('${s.id}')">
-      <div class="history-card-name">${escapeHtml(s.name)}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+        <div class="history-card-name">${escapeHtml(s.name)}</div>
+        <button onclick="event.stopPropagation();deleteArchivedStrategy('${s.id}')" style="background:none;border:1px solid #2e0a0a;border-radius:6px;color:#ff5252;font-size:11px;padding:3px 8px;cursor:pointer;flex-shrink:0;margin-left:8px;">✕</button>
+      </div>
       <div class="history-card-meta">Archivée le ${date} · ${n} trade${n > 1 ? 's' : ''}</div>
       <div class="history-stats">
         <div><div class="history-stat-lbl">Trades</div><div class="history-stat-val" style="color:#29b6f6">${n}</div></div>
@@ -892,6 +907,16 @@ function renderHistory() {
       </div>
     </div>`;
   }).join('')}</div>`;
+}
+
+async function deleteArchivedStrategy(strategyId) {
+  if (!confirm('Supprimer définitivement cette stratégie et tous ses trades ?')) return;
+  const { data: { user } } = await db.auth.getUser();
+  await db.from('trades').delete().eq('strategy_id', strategyId).eq('user_id', user.id);
+  const { error } = await db.from('strategies').delete().eq('id', strategyId).eq('user_id', user.id);
+  if (error) { showToast('⚠ Erreur de suppression'); return; }
+  showToast('Stratégie supprimée');
+  await loadHistory();
 }
 
 function viewHistoryStrategy(strategyId) {
